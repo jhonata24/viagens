@@ -1,6 +1,13 @@
 # Viagens
 
-Site da família para planear viagens: cada viagem tem a sua página com os hotéis, os preços e uma votação.
+Site da família para planear viagens. Cada viagem tem quatro separadores:
+
+- **Hotéis:** comparação de preços e notas, com votação no preferido.
+- **Roteiro:** PDF do roteiro para todos abrirem, e paragens por dia num mapa, com ordem otimizada e link para a rota a pé no Google Maps.
+- **Atrações:** lista de coisas para fazer, que se vão marcando como feitas.
+- **Contas:** despesas divididas em partes iguais, com o resumo de quem deve a quem (euros e libras em separado).
+
+Quem tem o link pode ver e editar tudo (pensado para uso em família).
 
 - **Site:** HTML, CSS e JavaScript simples, sem build. Publicado na Vercel a partir deste repositório.
 - **Dados:** Supabase (projeto `viagens`). Tabelas `trips`, `hotels` e `votes`; esquema em `supabase/migrations/`.
