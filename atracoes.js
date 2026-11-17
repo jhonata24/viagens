@@ -3,6 +3,7 @@ import { db, esc, run } from "./util.js";
 export async function renderAtracoes(el, ctx) {
   const { trip, member } = ctx;
   const { data: items, error } = await db.from("attractions").select("*").eq("trip_id", trip.id).order("position").order("created_at");
+  if (!el.isConnected) return;
   if (error) { el.innerHTML = `<p class="error">Não foi possível carregar as atrações.</p>`; return; }
 
   const done = items.filter((a) => a.done).length;

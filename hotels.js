@@ -6,6 +6,7 @@ export async function renderHotels(el, ctx) {
     db.from("hotels").select("*").eq("trip_id", trip.id).order("rank"),
     db.from("votes").select("hotel_id, voter_name, member_id").eq("trip_id", trip.id),
   ]);
+  if (!el.isConnected) return;
   if (e1 || e2) { el.innerHTML = `<p class="error">Não foi possível carregar os hotéis.</p>`; return; }
 
   const n = nights(trip);
@@ -34,7 +35,7 @@ export async function renderHotels(el, ctx) {
       <div class="actions">
         <div class="votes">${voters.length ? `<b>${voters.length} ${voters.length === 1 ? "voto" : "votos"}</b>: ${voters.map(esc).join(", ")}` : "Sem votos"}</div>
         <div class="btns">
-          <button class="btn ghost" data-vote="${h.id}" aria-pressed="${mine}" ${member ? "" : "disabled title=\"Escolha primeiro quem é, no topo da página\""}>${mine ? "O meu voto ✓" : "Votar neste"}</button>
+          <button class="btn ghost" data-vote="${h.id}" aria-pressed="${mine}" ${member ? "" : "disabled title=\"Escolha o seu nome em Eu sou, no topo\""}>${mine ? "O meu voto ✓" : "Votar neste"}</button>
           ${h.booking_url ? `<a class="btn" href="${esc(h.booking_url)}" target="_blank" rel="noopener">Ver no Booking.com</a>` : ""}
         </div>
       </div>
@@ -45,7 +46,7 @@ export async function renderHotels(el, ctx) {
   const other = hotels.filter((h) => h.breakfast !== "incluido");
 
   el.innerHTML = `
-    ${member ? "" : `<p class="hint">Para votar, escolha primeiro quem é, no topo da página.</p>`}
+    ${member ? "" : `<p class="hint">Para votar, escolha o seu nome em “Eu sou”, no topo da página.</p>`}
     <section>
       <h2>Recomendados</h2>
       <p class="muted">Pequeno-almoço incluído para todos, confirmado pelo hotel. Ordenados por qualidade/preço.</p>

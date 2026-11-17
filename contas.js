@@ -11,6 +11,7 @@ export async function renderContas(el, ctx) {
     .eq("trip_id", trip.id)
     .order("spent_on", { ascending: false })
     .order("created_at", { ascending: false });
+  if (!el.isConnected) return;
   if (error) { el.innerHTML = `<p class="error">Não foi possível carregar as contas.</p>`; return; }
 
   const name = (id) => members.find((m) => m.id === id)?.name ?? "?";
@@ -42,7 +43,7 @@ export async function renderContas(el, ctx) {
   }).join("");
 
   el.innerHTML = `
-    ${members.length < 2 ? `<p class="hint">Acrescente as pessoas da viagem no topo da página (“Quem é você?”) para poder dividir as contas.</p>` : ""}
+    ${members.length < 2 ? `<p class="hint">Acrescente as pessoas da viagem com “+ Pessoa”, no topo da página, para poder dividir as contas.</p>` : ""}
     ${curs.length ? `<div class="tiles">${totals}</div>` : ""}
     <section class="panel">
       <h3>Nova despesa</h3>

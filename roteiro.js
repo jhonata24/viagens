@@ -27,6 +27,7 @@ export async function renderRoteiro(el, ctx) {
     db.from("trip_files").select("*").eq("trip_id", trip.id).eq("kind", "roteiro").order("created_at"),
     db.from("itinerary_stops").select("*").eq("trip_id", trip.id).order("day").order("position").order("created_at"),
   ]);
+  if (!el.isConnected) return;
   if (e1 || e2) { el.innerHTML = `<p class="error">Não foi possível carregar o roteiro.</p>`; return; }
 
   const stops = allStops.filter((s) => s.day === day);
@@ -163,6 +164,7 @@ export async function renderRoteiro(el, ctx) {
 function drawMap(pts) {
   const box = document.getElementById("map");
   if (map) { map.remove(); map = null; }
+  if (!box) return;
   if (!window.L) { box.innerHTML = `<p class="muted pad">O mapa não carregou.</p>`; return; }
   map = L.map(box, { scrollWheelZoom: false });
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {

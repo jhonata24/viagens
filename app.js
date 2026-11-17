@@ -66,31 +66,28 @@ async function renderTrip(slug, tabId, sub) {
   app.innerHTML = `
     <a class="back" href="#">← Todas as viagens</a>
     <div class="trip-head">
-      <div class="eyebrow">Viagem · ${esc(trip.country || "")}</div>
       <h1>${esc(trip.title)}</h1>
-      <div class="chips">
-        <span class="chip">${fmtDate(trip.start_date)} → ${fmtDate(trip.end_date)}</span>
-        <span class="chip">${nights(trip)} noites</span>
-        ${trip.requirements.map((r) => `<span class="chip">${esc(r)}</span>`).join("")}
-      </div>
+      <div class="muted small">${fmtDate(trip.start_date, { day: "numeric", month: "short" })} → ${fmtDate(trip.end_date, { day: "numeric", month: "short", year: "numeric" })} · ${nights(trip)} noites · ${trip.requirements.map(esc).join(" · ")}</div>
     </div>
-    ${trip.alert && tab.id !== "contas" ? `<div class="alert">${esc(trip.alert)}</div>` : ""}
 
     <div class="who">
-      <label for="who-select"><b>Quem é você?</b></label>
+      <label for="who-select" class="small"><b>Eu sou</b></label>
       <select id="who-select">
         <option value="">Escolha o seu nome…</option>
         ${members.map((m) => `<option value="${m.id}" ${member?.id === m.id ? "selected" : ""}>${esc(m.name)}</option>`).join("")}
       </select>
-      <form id="add-member" class="inline">
-        <label for="new-member" class="sr">Nome de uma pessoa nova</label>
-        <input id="new-member" maxlength="40" placeholder="Pessoa nova">
-        <button class="btn ghost" type="submit">Acrescentar</button>
-      </form>
-      <span class="muted small">${members.length ? `Na viagem: ${members.map((m) => esc(m.name)).join(", ")}` : "Acrescentem as pessoas da viagem."}</span>
+      <details class="add-person">
+        <summary class="btn ghost">+ Pessoa</summary>
+        <form id="add-member" class="inline">
+          <label for="new-member" class="sr">Nome de uma pessoa nova</label>
+          <input id="new-member" maxlength="40" placeholder="Nome">
+          <button class="btn" type="submit">Acrescentar</button>
+        </form>
+      </details>
     </div>
 
     <h2 class="tab-title">${tab.label}</h2>
+    ${trip.alert && (tab.id === "hoteis" || tab.id === "roteiro") ? `<div class="alert">${esc(trip.alert)}</div>` : ""}
     <div id="tab-body"><p class="muted">A carregar…</p></div>
     <nav class="tabs" aria-label="Secções da viagem">${TABS.map((t) =>
       `<a href="#${esc(trip.slug)}/${t.id}" class="tab${t.id === tab.id ? " on" : ""}" ${t.id === tab.id ? 'aria-current="page"' : ""}>${icon(t.id)}<span>${t.label}</span></a>`
