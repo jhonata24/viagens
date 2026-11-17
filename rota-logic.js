@@ -66,3 +66,19 @@ export function googleMapsUrl(stops, base = null, mode = "walking") {
   if (mid.length) p.set("waypoints", mid.map(ll).join("|"));
   return `https://www.google.com/maps/dir/?${p}`;
 }
+
+/**
+ * Quilómetros (em linha reta) de toda a viagem para um hotel: em cada dia, sai do hotel,
+ * faz as paragens na ordem otimizada e volta ao hotel.
+ * stopsByDay: { "2026-12-23": [stops], ... }
+ */
+export function tripKm(stopsByDay, hotel) {
+  let total = 0;
+  const perDay = {};
+  for (const [day, stops] of Object.entries(stopsByDay)) {
+    const km = stops.some(hasGeo) ? pathLength(routePoints(optimizeOrder(stops, hotel), hotel)) : 0;
+    perDay[day] = km;
+    total += km;
+  }
+  return { total, perDay };
+}

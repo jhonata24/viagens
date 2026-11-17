@@ -20,7 +20,14 @@ export async function renderRoteiro(el, ctx) {
   if (!el.isConnected) return;
   if (e1 || e2) { el.innerHTML = `<p class="error">Não foi possível carregar o roteiro.</p>`; return; }
 
-  const stops = allStops.filter((s) => s.day === day);
+  // Ordem automática: sempre a que dá menos quilómetros (com o hotel no início e no fim, quando há).
+  const saved = allStops.filter((s) => s.day === day);
+  const stops = optimizeOrder(saved, hotel);
+  if (stops.some((s, i) => s.position !== i)) {
+    Promise.all(stops.map((s, i) => db.from("itinerary_stops").update({ position: i }).eq("id", s.id)))
+      .then((res) => { if (res.some((r) => r.error)) console.error("Não foi possível guardar a ordem"); });
+    stops.forEach((s, i) => { s.position = i; });
+  }
   const countByDay = (d) => allStops.filter((s) => s.day === d).length;
   const gmaps = googleMapsUrl(stops, hotel);
   const geoStops = stops.filter((s) => s.lat != null);
@@ -61,17 +68,14 @@ export async function renderRoteiro(el, ctx) {
                 ${s.notes ? `<span class="small">${esc(s.notes)}</span>` : ""}
               </div>
               <div class="stop-actions">
-                <button class="icon-btn" data-up="${s.id}" ${i === 0 ? "disabled" : ""} aria-label="Subir ${esc(s.name)}">↑</button>
-                <button class="icon-btn" data-down="${s.id}" ${i === stops.length - 1 ? "disabled" : ""} aria-label="Descer ${esc(s.name)}">↓</button>
                 <button class="icon-btn" data-delstop="${s.id}" aria-label="Apagar ${esc(s.name)}">✕</button>
               </div>
             </li>`).join("")}${hotelRow1("Regresso")}</ol>` : `<p class="muted">Ainda não há paragens para este dia.${hotel ? "" : " A primeira paragem é o ponto de partida."}</p>`}
 
           <div class="route-btns">
-            <button class="btn ghost" id="optimize" ${geoStops.length < (hotel ? 2 : 3) ? "disabled" : ""}>Otimizar ordem</button>
             ${gmaps ? `<a class="btn" href="${gmaps}" target="_blank" rel="noopener">Abrir rota no Google Maps</a>` : ""}
           </div>
-          ${km ? `<p class="muted small">Cerca de ${km.toFixed(1).replace(".", ",")} km a pé em linha reta${hotel ? ", a sair do hotel e a voltar" : " entre paragens"}.${route.length > 11 ? " O Google Maps só aceita 9 paragens intermédias: as restantes ficam de fora do link." : ""}${missing ? ` ${missing} paragem(ns) sem localização não entram na rota.` : ""}</p>` : ""}
+          ${km ? `<p class="muted small">Ordem calculada automaticamente para andar o menos possível. Cerca de ${km.toFixed(1).replace(".", ",")} km a pé em linha reta${hotel ? ", a sair do hotel e a voltar" : " entre paragens"}.${route.length > 11 ? " O Google Maps só aceita 9 paragens intermédias: as restantes ficam de fora do link." : ""}${missing ? ` ${missing} paragem(ns) sem localização não entram na rota.` : ""}</p>` : ""}
 
           <form id="add-stop" class="form-grid">
             <label for="stop-name">Sítio</label>
@@ -130,22 +134,7 @@ export async function renderRoteiro(el, ctx) {
     if (ok) ctx.refresh(); else { btn.disabled = false; btn.textContent = "Acrescentar paragem"; }
   });
 
-  const saveOrder = async (ordered) => {
-    const res = await Promise.all(ordered.map((s, i) => db.from("itinerary_stops").update({ position: i }).eq("id", s.id)));
-    if (res.some((r) => r.error)) toast("Não foi possível guardar a nova ordem.");
-    ctx.refresh();
-  };
-  const move = (id, delta) => {
-    const arr = [...stops];
-    const i = arr.findIndex((s) => s.id === id);
-    const j = i + delta;
-    if (j < 0 || j >= arr.length) return;
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-    saveOrder(arr);
-  };
-  el.querySelectorAll("[data-up]").forEach((b) => b.addEventListener("click", () => move(b.dataset.up, -1)));
-  el.querySelectorAll("[data-down]").forEach((b) => b.addEventListener("click", () => move(b.dataset.down, 1)));
-  el.querySelector("#optimize").addEventListener("click", () => saveOrder(optimizeOrder(stops, hotel)));
+
   el.querySelectorAll("[data-delstop]").forEach((b) =>
     b.addEventListener("click", async () => {
       if (b.dataset.armed !== "1") { b.dataset.armed = "1"; b.textContent = "?"; b.classList.add("armed"); return; }

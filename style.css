@@ -205,3 +205,8 @@ body.has-tabs .wrap{padding-bottom:calc(110px + env(safe-area-inset-bottom))}
 .chosen b{color:var(--good)}
 .card.chosen-card{border:2px solid var(--good)}
 .btn.choose[aria-pressed="true"]{background:var(--good);color:#fff;border-color:var(--good)}
+
+.km-summary{margin:0 0 16px}
+.sort .btn{padding:6px 12px;font-size:14px}
+.sort .btn[aria-pressed="true"]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.stat.km.best{border-color:var(--good);color:var(--good);font-weight:700}
