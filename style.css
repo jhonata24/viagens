@@ -210,3 +210,7 @@ body.has-tabs .wrap{padding-bottom:calc(110px + env(safe-area-inset-bottom))}
 .sort .btn{padding:6px 12px;font-size:14px}
 .sort .btn[aria-pressed="true"]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
 .stat.km.best{border-color:var(--good);color:var(--good);font-weight:700}
+
+.sites{display:flex;flex-wrap:wrap;gap:6px}
+.site{font-size:13px;border-radius:8px;padding:3px 9px;background:var(--bg);border:1px solid var(--line);font-variant-numeric:tabular-nums}
+.site.cheapest{border-color:var(--good);color:var(--good);font-weight:700}

@@ -33,12 +33,14 @@ export async function renderHotels(el, ctx) {
     const voters = byHotel(h.id);
     const mine = myVote === h.id;
     const chosen = trip.hotel_id === h.id;
+    const sites = Object.entries(h.prices || {}).map(([site, price]) => ({ site, price: Number(price) })).sort((a, b) => a.price - b.price);
+    const best = sites[0] ?? (h.total_price ? { site: "Booking.com", price: Number(h.total_price) } : null);
     return `<article class="card${top ? " top" : ""}${mine ? " mine" : ""}${chosen ? " chosen-card" : ""}">
       <div class="row1">
         <div class="rank">${h.rank}</div>
         <div><h3>${esc(h.name)}</h3><div class="zone">${esc(h.zone)}${h.stars ? " · " + "★".repeat(h.stars) : ""}</div></div>
-        <div class="price">${h.total_price
-          ? `<b>${money(h.total_price, h.currency)}</b><span>${money(h.total_price / n, h.currency)} por noite</span><span>${money(h.total_price / n / trip.travelers, h.currency)} por pessoa/noite</span>`
+        <div class="price">${best
+          ? `<b>${money(best.price, h.currency)}</b><span>no ${esc(best.site)}</span><span>${money(best.price / n, h.currency)} por noite</span><span>${money(best.price / n / trip.travelers, h.currency)} por pessoa/noite</span>`
           : `<span>Preço por confirmar</span>`}</div>
       </div>
       <div class="stats">
@@ -49,6 +51,7 @@ export async function renderHotels(el, ctx) {
         ${h.walk_to_center ? `<span class="stat">${esc(h.walk_to_center)}</span>` : ""}
         ${km[h.id] != null ? `<span class="stat km${h.id === shortest?.id ? " best" : ""}">Roteiro a pé <b>${fmtKm(km[h.id])}</b>${h.id === shortest?.id ? " · o mais curto" : ""}</span>` : ""}
       </div>
+      ${sites.length > 1 ? `<div class="sites">${sites.map((x, i) => `<span class="site${i === 0 ? " cheapest" : ""}">${esc(x.site)}: <b>${money(x.price, h.currency)}</b>${i === 0 ? " · mais barato" : ""}</span>`).join("")}</div>` : ""}
       <div class="pc"><div class="pro"><span class="h">Prós</span>${esc(h.pros)}</div><div class="con"><span class="h">Contras</span>${esc(h.cons)}</div></div>
       <div class="actions">
         <div class="votes">${voters.length ? `<b>${voters.length} ${voters.length === 1 ? "voto" : "votos"}</b>: ${voters.map(esc).join(", ")}` : "Sem votos"}</div>
