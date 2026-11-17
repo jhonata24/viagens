@@ -1,40 +1,32 @@
-import { db, esc, fmtDate, tripDays, run, toast } from "./util.js";
-import { optimizeOrder, googleMapsUrl, pathLength } from "./rota-logic.js";
+import { db, esc, fmtDate, tripDays, run, toast, geocode } from "./util.js";
+import { optimizeOrder, googleMapsUrl, pathLength, routePoints } from "./rota-logic.js";
 import { SUPABASE_URL } from "./config.js";
 
 const BUCKET = "roteiros";
 const pdfUrl = (path) => `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${path.split("/").map(encodeURIComponent).join("/")}`;
 let map = null;
 
-/** Procura as coordenadas de um sítio no OpenStreetMap (Nominatim). */
-async function geocode(q, destination) {
-  try {
-    const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&accept-language=pt&q=${encodeURIComponent(`${q}, ${destination}`)}`;
-    const r = await fetch(url, { headers: { Accept: "application/json" } });
-    const [hit] = await r.json();
-    return hit ? { lat: Number(hit.lat), lng: Number(hit.lon), address: hit.display_name } : null;
-  } catch {
-    return null;
-  }
-}
-
 export async function renderRoteiro(el, ctx) {
   const { trip } = ctx;
   const days = tripDays(trip);
   const day = days.includes(ctx.sub) ? ctx.sub : days[0];
 
-  const [{ data: files, error: e1 }, { data: allStops, error: e2 }] = await Promise.all([
+  const [{ data: files, error: e1 }, { data: allStops, error: e2 }, { data: hotelRow }] = await Promise.all([
     db.from("trip_files").select("*").eq("trip_id", trip.id).eq("kind", "roteiro").order("created_at"),
     db.from("itinerary_stops").select("*").eq("trip_id", trip.id).order("day").order("position").order("created_at"),
+    trip.hotel_id ? db.from("hotels").select("id, name, zone, lat, lng").eq("id", trip.hotel_id).maybeSingle() : Promise.resolve({ data: null }),
   ]);
+  const hotel = hotelRow && hotelRow.lat != null ? hotelRow : null;
   if (!el.isConnected) return;
   if (e1 || e2) { el.innerHTML = `<p class="error">Não foi possível carregar o roteiro.</p>`; return; }
 
   const stops = allStops.filter((s) => s.day === day);
   const countByDay = (d) => allStops.filter((s) => s.day === d).length;
-  const gmaps = googleMapsUrl(stops);
+  const gmaps = googleMapsUrl(stops, hotel);
   const geoStops = stops.filter((s) => s.lat != null);
-  const km = geoStops.length > 1 ? pathLength(geoStops) : 0;
+  const route = routePoints(stops, hotel);
+  const km = route.length > 1 ? pathLength(route) : 0;
+  const hotelRow1 = (label) => hotel ? `<li class="hotel-stop"><span class="stop-n">H</span><div class="stop-body"><b>${esc(hotel.name)}</b><span class="muted small">${label}</span></div></li>` : "";
   const missing = stops.length - geoStops.length;
 
   el.innerHTML = `
@@ -59,7 +51,8 @@ export async function renderRoteiro(el, ctx) {
 
       <div class="route-layout">
         <div>
-          ${stops.length ? `<ol class="stops">${stops.map((s, i) => `
+          ${hotel ? "" : `<p class="hint">Escolham o hotel no separador Hotéis: as rotas passam a começar e acabar lá.</p>`}
+          ${stops.length ? `<ol class="stops">${hotelRow1("Partida")}${stops.map((s, i) => `
             <li>
               <span class="stop-n">${i + 1}</span>
               <div class="stop-body">
@@ -72,13 +65,13 @@ export async function renderRoteiro(el, ctx) {
                 <button class="icon-btn" data-down="${s.id}" ${i === stops.length - 1 ? "disabled" : ""} aria-label="Descer ${esc(s.name)}">↓</button>
                 <button class="icon-btn" data-delstop="${s.id}" aria-label="Apagar ${esc(s.name)}">✕</button>
               </div>
-            </li>`).join("")}</ol>` : `<p class="muted">Ainda não há paragens para este dia. A primeira paragem é o ponto de partida (por exemplo, o hotel).</p>`}
+            </li>`).join("")}${hotelRow1("Regresso")}</ol>` : `<p class="muted">Ainda não há paragens para este dia.${hotel ? "" : " A primeira paragem é o ponto de partida."}</p>`}
 
           <div class="route-btns">
-            <button class="btn ghost" id="optimize" ${geoStops.length < 3 ? "disabled" : ""}>Otimizar ordem</button>
+            <button class="btn ghost" id="optimize" ${geoStops.length < (hotel ? 2 : 3) ? "disabled" : ""}>Otimizar ordem</button>
             ${gmaps ? `<a class="btn" href="${gmaps}" target="_blank" rel="noopener">Abrir rota no Google Maps</a>` : ""}
           </div>
-          ${km ? `<p class="muted small">Cerca de ${km.toFixed(1).replace(".", ",")} km a pé em linha reta entre paragens.${geoStops.length > 11 ? " O Google Maps só aceita 11 paragens de cada vez: as restantes ficam de fora do link." : ""}${missing ? ` ${missing} paragem(ns) sem localização não entram na rota.` : ""}</p>` : ""}
+          ${km ? `<p class="muted small">Cerca de ${km.toFixed(1).replace(".", ",")} km a pé em linha reta${hotel ? ", a sair do hotel e a voltar" : " entre paragens"}.${route.length > 11 ? " O Google Maps só aceita 9 paragens intermédias: as restantes ficam de fora do link." : ""}${missing ? ` ${missing} paragem(ns) sem localização não entram na rota.` : ""}</p>` : ""}
 
           <form id="add-stop" class="form-grid">
             <label for="stop-name">Sítio</label>
@@ -94,7 +87,7 @@ export async function renderRoteiro(el, ctx) {
       </div>
     </section>`;
 
-  drawMap(geoStops);
+  drawMap(geoStops, hotel);
 
   // PDF
   el.querySelector("#pdf-input").addEventListener("change", async (e) => {
@@ -152,7 +145,7 @@ export async function renderRoteiro(el, ctx) {
   };
   el.querySelectorAll("[data-up]").forEach((b) => b.addEventListener("click", () => move(b.dataset.up, -1)));
   el.querySelectorAll("[data-down]").forEach((b) => b.addEventListener("click", () => move(b.dataset.down, 1)));
-  el.querySelector("#optimize").addEventListener("click", () => saveOrder(optimizeOrder(stops)));
+  el.querySelector("#optimize").addEventListener("click", () => saveOrder(optimizeOrder(stops, hotel)));
   el.querySelectorAll("[data-delstop]").forEach((b) =>
     b.addEventListener("click", async () => {
       if (b.dataset.armed !== "1") { b.dataset.armed = "1"; b.textContent = "?"; b.classList.add("armed"); return; }
@@ -161,7 +154,7 @@ export async function renderRoteiro(el, ctx) {
   );
 }
 
-function drawMap(pts) {
+function drawMap(pts, hotel) {
   const box = document.getElementById("map");
   if (map) { map.remove(); map = null; }
   if (!box) return;
@@ -171,8 +164,12 @@ function drawMap(pts) {
     maxZoom: 19,
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
   }).addTo(map);
-  if (!pts.length) { map.setView([51.5074, -0.1278], 12); return; }
-  const latlngs = pts.map((p) => [p.lat, p.lng]);
+  if (!pts.length && !hotel) { map.setView([51.5074, -0.1278], 12); return; }
+  const latlngs = (hotel ? [hotel, ...pts, hotel] : pts).map((p) => [p.lat, p.lng]);
+  if (hotel) L.marker([hotel.lat, hotel.lng], {
+    icon: L.divIcon({ className: "pin hotel", html: "<span>H</span>", iconSize: [30, 30], iconAnchor: [15, 15] }),
+    title: hotel.name, zIndexOffset: 1000,
+  }).bindPopup(esc(hotel.name)).addTo(map);
   pts.forEach((p, i) =>
     L.marker([p.lat, p.lng], {
       icon: L.divIcon({ className: "pin", html: `<span>${i + 1}</span>`, iconSize: [28, 28], iconAnchor: [14, 14] }),

@@ -197,3 +197,11 @@ body.has-tabs .wrap{padding-bottom:calc(110px + env(safe-area-inset-bottom))}
 .add-person[open]{flex-basis:100%}
 .add-person[open] summary{display:none}
 .alert{font-size:15px;margin-bottom:18px}
+
+.hotel-stop{background:var(--bg)!important;border-style:dashed!important}
+.hotel-stop .stop-n,.pin.hotel span{background:var(--ink);color:var(--surface)}
+.pin.hotel span{width:30px;height:30px}
+.chosen{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px;background:var(--good-soft);border:1px solid var(--good);border-radius:12px;padding:12px 14px;margin-bottom:16px}
+.chosen b{color:var(--good)}
+.card.chosen-card{border:2px solid var(--good)}
+.btn.choose[aria-pressed="true"]{background:var(--good);color:#fff;border-color:var(--good)}

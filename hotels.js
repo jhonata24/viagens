@@ -1,4 +1,4 @@
-import { db, esc, money, nights, run } from "./util.js";
+import { db, esc, money, nights, run, geocode, toast } from "./util.js";
 
 export async function renderHotels(el, ctx) {
   const { trip, member } = ctx;
@@ -16,7 +16,8 @@ export async function renderHotels(el, ctx) {
   const card = (h, top) => {
     const voters = byHotel(h.id);
     const mine = myVote === h.id;
-    return `<article class="card${top ? " top" : ""}${mine ? " mine" : ""}">
+    const chosen = trip.hotel_id === h.id;
+    return `<article class="card${top ? " top" : ""}${mine ? " mine" : ""}${chosen ? " chosen-card" : ""}">
       <div class="row1">
         <div class="rank">${h.rank}</div>
         <div><h3>${esc(h.name)}</h3><div class="zone">${esc(h.zone)}${h.stars ? " · " + "★".repeat(h.stars) : ""}</div></div>
@@ -35,6 +36,7 @@ export async function renderHotels(el, ctx) {
       <div class="actions">
         <div class="votes">${voters.length ? `<b>${voters.length} ${voters.length === 1 ? "voto" : "votos"}</b>: ${voters.map(esc).join(", ")}` : "Sem votos"}</div>
         <div class="btns">
+          <button class="btn ghost choose" data-choose="${h.id}" aria-pressed="${chosen}">${chosen ? "Hotel escolhido ✓" : "Escolher este hotel"}</button>
           <button class="btn ghost" data-vote="${h.id}" aria-pressed="${mine}" ${member ? "" : "disabled title=\"Escolha o seu nome em Eu sou, no topo\""}>${mine ? "O meu voto ✓" : "Votar neste"}</button>
           ${h.booking_url ? `<a class="btn" href="${esc(h.booking_url)}" target="_blank" rel="noopener">Ver no Booking.com</a>` : ""}
         </div>
@@ -45,7 +47,11 @@ export async function renderHotels(el, ctx) {
   const ok = hotels.filter((h) => h.breakfast === "incluido");
   const other = hotels.filter((h) => h.breakfast !== "incluido");
 
+  const chosenHotel = hotels.find((h) => h.id === trip.hotel_id);
   el.innerHTML = `
+    ${chosenHotel
+      ? `<div class="chosen"><span>Hotel escolhido: <b>${esc(chosenHotel.name)}</b>. As rotas do roteiro começam e acabam aqui.</span><button class="btn ghost" data-unchoose>Tirar escolha</button></div>`
+      : `<p class="muted">Ainda não escolheram o hotel. Quando escolherem, as rotas do roteiro passam a começar e acabar nele.</p>`}
     ${member ? "" : `<p class="hint">Para votar, escolha o seu nome em “Eu sou”, no topo da página.</p>`}
     <section>
       <h2>Recomendados</h2>
@@ -58,6 +64,23 @@ export async function renderHotels(el, ctx) {
       <div class="list">${other.map((h) => card(h, false)).join("")}</div>
     </section>` : ""}
     <p class="foot">Preços totais verificados no Booking.com. Os preços mudam todos os dias: confirmem no botão de cada hotel antes de reservar. Tempos a pé aproximados.</p>`;
+
+  const setHotel = async (id) => {
+    if (id) {
+      const h = hotels.find((x) => x.id === id);
+      if (h && h.lat == null) {
+        const g = await geocode(h.name, trip.destination);
+        if (g) await db.from("hotels").update({ lat: g.lat, lng: g.lng }).eq("id", id);
+        else toast("Não encontrei este hotel no mapa; as rotas não o vão incluir.", "info");
+      }
+    }
+    const ok = await run(db.from("trips").update({ hotel_id: id }).eq("id", trip.id), "Não foi possível guardar o hotel escolhido.");
+    if (ok) { trip.hotel_id = id; ctx.refresh(); }
+  };
+  el.querySelectorAll("[data-choose]").forEach((b) =>
+    b.addEventListener("click", () => { b.disabled = true; setHotel(trip.hotel_id === b.dataset.choose ? null : b.dataset.choose); })
+  );
+  el.querySelector("[data-unchoose]")?.addEventListener("click", () => setHotel(null));
 
   el.querySelectorAll("[data-vote]").forEach((b) =>
     b.addEventListener("click", async () => {

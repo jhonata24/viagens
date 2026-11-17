@@ -62,3 +62,15 @@ export async function run(promise, failMsg) {
   }
   return data ?? true;
 }
+
+/** Procura as coordenadas de um sítio no OpenStreetMap (Nominatim). */
+export async function geocode(q, destination) {
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&accept-language=pt&q=${encodeURIComponent(`${q}, ${destination}`)}`;
+    const r = await fetch(url, { headers: { Accept: "application/json" } });
+    const [hit] = await r.json();
+    return hit ? { lat: Number(hit.lat), lng: Number(hit.lon), address: hit.display_name } : null;
+  } catch {
+    return null;
+  }
+}
