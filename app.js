@@ -5,6 +5,15 @@ import { renderAtracoes } from "./atracoes.js";
 import { renderContas } from "./contas.js";
 
 const app = document.getElementById("app");
+// Ícones de traço, 24×24
+const ICON = {
+  hoteis: '<path d="M3 19V6M3 15h18v4M21 15v-3a3 3 0 0 0-3-3h-7v6"/><circle cx="7" cy="11" r="2"/>',
+  roteiro: '<path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/>',
+  atracoes: '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="m8 12 3 3 5-6"/>',
+  contas: '<path d="M4 7h16v12H4z"/><path d="M4 7l2-3h12l2 3"/><circle cx="12" cy="13" r="2.5"/>',
+};
+const icon = (id) => `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[id]}</svg>`;
+
 const TABS = [
   { id: "hoteis", label: "Hotéis", render: renderHotels },
   { id: "roteiro", label: "Roteiro", render: renderRoteiro },
@@ -17,6 +26,7 @@ const fail = (msg) => { app.innerHTML = `<p class="error">${esc(msg)} Tente reca
 /* ---------- Página inicial ---------- */
 async function renderHome() {
   document.title = "Viagens";
+  document.body.classList.remove("has-tabs");
   const { data: trips, error } = await db.from("trips").select("*").order("start_date");
   if (error) return fail("Não foi possível carregar as viagens.");
 
@@ -80,10 +90,12 @@ async function renderTrip(slug, tabId, sub) {
       <span class="muted small">${members.length ? `Na viagem: ${members.map((m) => esc(m.name)).join(", ")}` : "Acrescentem as pessoas da viagem."}</span>
     </div>
 
+    <h2 class="tab-title">${tab.label}</h2>
+    <div id="tab-body"><p class="muted">A carregar…</p></div>
     <nav class="tabs" aria-label="Secções da viagem">${TABS.map((t) =>
-      `<a href="#${esc(trip.slug)}/${t.id}" class="tab${t.id === tab.id ? " on" : ""}" ${t.id === tab.id ? 'aria-current="page"' : ""}>${t.label}</a>`
-    ).join("")}</nav>
-    <div id="tab-body"><p class="muted">A carregar…</p></div>`;
+      `<a href="#${esc(trip.slug)}/${t.id}" class="tab${t.id === tab.id ? " on" : ""}" ${t.id === tab.id ? 'aria-current="page"' : ""}>${icon(t.id)}<span>${t.label}</span></a>`
+    ).join("")}</nav>`;
+  document.body.classList.add("has-tabs");
 
   app.querySelector("#who-select").addEventListener("change", (e) => {
     me.set(trip.id, e.target.value || null);

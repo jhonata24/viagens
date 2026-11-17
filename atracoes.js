@@ -25,7 +25,7 @@ export async function renderAtracoes(el, ctx) {
 
   el.innerHTML = `
     <section>
-      <div class="progress-head"><h2>Atrações</h2><span class="muted">${done} de ${items.length} feitas</span></div>
+      <div class="progress-head"><b>${done} de ${items.length} feitas</b><span class="muted">${pct}%</span></div>
       <div class="progress" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100"><span style="width:${pct}%"></span></div>
       <ul class="todos">${todo.map(row).join("") || '<li class="muted">Está tudo feito!</li>'}</ul>
       ${feitas.length ? `<h3 class="sub">Já feitas</h3><ul class="todos">${feitas.map(row).join("")}</ul>` : ""}
