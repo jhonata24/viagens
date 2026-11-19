@@ -227,3 +227,23 @@ body.has-tabs .wrap{padding-bottom:calc(110px + env(safe-area-inset-bottom))}
 .sites{display:flex;flex-wrap:wrap;gap:6px}
 .site{font-size:13px;border-radius:8px;padding:3px 9px;background:var(--bg);border:1px solid var(--line);font-variant-numeric:tabular-nums}
 .site.cheapest{border-color:var(--good);color:var(--good);font-weight:700}
+
+/* Restaurantes */
+.rest-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
+.rest h3{margin:0;font-size:19px}
+.rest-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.rest-price{display:grid;text-align:right;white-space:nowrap}
+.rest-price b{font-family:var(--display);font-size:22px}
+.rest-tags{display:flex;flex-wrap:wrap;gap:6px}
+.pill{font-size:13px;font-weight:700;border-radius:99px;padding:3px 10px;border:1px solid var(--line);background:var(--bg);color:var(--muted);text-decoration:none}
+.pill.tf{background:var(--good-soft);color:var(--good);border-color:transparent}
+.pill.must{background:var(--accent-soft);color:var(--accent);border-color:transparent}
+.pill.soft{background:var(--warn-soft);color:var(--warn);border-color:transparent}
+.pill.walk{background:var(--bg);color:var(--ink)}
+.fit-title{margin:0 0 6px;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.fits{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.fit{display:grid;gap:1px;border:1px solid var(--line);border-radius:10px;padding:7px 10px;background:var(--bg)}
+.fit.has-offer{border-color:var(--good)}
+.fit.dim{opacity:.55}
+.offer{font-size:13px;font-weight:700;color:var(--good)}
+.tabs .tab span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}

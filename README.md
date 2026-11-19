@@ -1,9 +1,10 @@
 # Viagens
 
-Site da família para planear viagens. Cada viagem tem quatro separadores:
+Site da família para planear viagens. Cada viagem tem cinco separadores:
 
 - **Hotéis:** comparação de preços e notas, com votação no preferido.
 - **Roteiro:** PDF do roteiro para todos abrirem, e paragens por dia num mapa, com ordem otimizada e link para a rota a pé no Google Maps. Pode haver várias opções de roteiro (tabela `itinerary_variants`); as opções com `auto_order = false` mantêm a ordem por horário.
+- **Restaurantes:** sugestões com preço médio, se estão no TheFork (e com que desconto por dia) e se é preciso reservar. O site mostra para que dia e refeição cada um serve, pela distância às paragens do roteiro (tabela `restaurants`).
 - **Atrações:** lista de coisas para fazer, que se vão marcando como feitas.
 - **Contas:** despesas divididas em partes iguais, com o resumo de quem deve a quem (euros e libras em separado).
 

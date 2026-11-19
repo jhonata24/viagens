@@ -2,6 +2,7 @@ import { db, esc, fmtDate, nights, daysUntil, me, run } from "./util.js";
 import { renderHotels } from "./hotels.js";
 import { renderRoteiro } from "./roteiro.js";
 import { renderAtracoes } from "./atracoes.js";
+import { renderRestaurantes } from "./restaurantes.js";
 import { renderContas } from "./contas.js";
 
 const app = document.getElementById("app");
@@ -9,6 +10,7 @@ const app = document.getElementById("app");
 const ICON = {
   hoteis: '<path d="M3 19V6M3 15h18v4M21 15v-3a3 3 0 0 0-3-3h-7v6"/><circle cx="7" cy="11" r="2"/>',
   roteiro: '<path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/>',
+  restaurantes: '<path d="M7 3v8a2 2 0 0 0 2 2h0v8"/><path d="M5 3v5a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V3"/><path d="M9 3v5"/><path d="M17 21V3c-2 0-3 3-3 6s1 4 3 4"/>',
   atracoes: '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="m8 12 3 3 5-6"/>',
   contas: '<path d="M4 7h16v12H4z"/><path d="M4 7l2-3h12l2 3"/><circle cx="12" cy="13" r="2.5"/>',
 };
@@ -17,6 +19,7 @@ const icon = (id) => `<svg width="22" height="22" viewBox="0 0 24 24" fill="none
 const TABS = [
   { id: "hoteis", label: "Hotéis", render: renderHotels },
   { id: "roteiro", label: "Roteiro", render: renderRoteiro },
+  { id: "restaurantes", label: "Restaurantes", render: renderRestaurantes },
   { id: "atracoes", label: "Atrações", render: renderAtracoes },
   { id: "contas", label: "Contas", render: renderContas },
 ];
