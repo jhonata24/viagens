@@ -46,6 +46,11 @@ export async function renderRoteiro(el, ctx) {
   const km = route.length > 1 ? pathLength(route) : 0;
   const hotelRow1 = (label) => hotel ? `<li class="hotel-stop"><span class="stop-n">H</span><div class="stop-body"><b>${esc(hotel.name)}</b><span class="muted small">${label}</span></div></li>` : "";
   const missing = stops.length - geoStops.length;
+  // Preços (por adulto, em libras). 0 = grátis; sem valor = não indicado (ex.: refeições).
+  const gbp = (n) => `£${Number(n).toLocaleString("pt-PT", { maximumFractionDigits: 2 })}`;
+  const priceTag = (s) => s.price_gbp == null ? "" : `<span class="price${Number(s.price_gbp) === 0 ? " free" : ""}">${Number(s.price_gbp) === 0 ? "Grátis" : `${gbp(s.price_gbp)} por pessoa`}</span>`;
+  const priced = stops.filter((s) => s.price_gbp != null);
+  const dayTotal = priced.reduce((t, s) => t + Number(s.price_gbp), 0);
 
   el.innerHTML = `
     <section class="panel">
@@ -78,6 +83,7 @@ export async function renderRoteiro(el, ctx) {
               <span class="stop-n">${i + 1}</span>
               <div class="stop-body">
                 <b>${esc(s.name)}</b>
+                ${s.price_gbp != null || s.price_note ? `<span class="small price-line">${priceTag(s)}${s.price_note ? ` <span class="muted">${esc(s.price_note)}</span>` : ""}</span>` : ""}
                 ${s.lat == null ? `<span class="warn-text">Não encontrado no mapa: acrescente a morada.</span>` : s.address ? `<span class="muted small">${esc(s.address.split(",").slice(0, 3).join(","))}</span>` : ""}
                 ${s.notes ? `<span class="small">${esc(s.notes)}</span>` : ""}
               </div>
@@ -86,6 +92,7 @@ export async function renderRoteiro(el, ctx) {
               </div>
             </li>`).join("")}${hotelRow1("Regresso")}</ol>` : `<p class="muted">Ainda não há paragens para este dia.${hotel ? "" : " A primeira paragem é o ponto de partida."}</p>`}
 
+          ${priced.length ? `<p class="day-total"><b>Entradas neste dia:</b> ${dayTotal ? `${gbp(dayTotal)} por pessoa · ${gbp(dayTotal * trip.travelers)} para ${trip.travelers}` : "tudo grátis"}<span class="muted small"> (sem refeições nem transportes)</span></p>` : ""}
           <div class="route-btns">
             ${gmaps ? `<a class="btn" href="${gmaps}" target="_blank" rel="noopener">Abrir rota no Google Maps</a>` : ""}
           </div>
@@ -98,6 +105,8 @@ export async function renderRoteiro(el, ctx) {
             <input id="stop-addr" maxlength="200" placeholder="Opcional, se o nome não chegar">
             <label for="stop-notes">Notas</label>
             <input id="stop-notes" maxlength="200" placeholder="Ex.: comprar bilhetes antes">
+            <label for="stop-price">Preço (£)</label>
+            <input id="stop-price" type="number" min="0" step="0.5" inputmode="decimal" placeholder="Por pessoa. 0 = grátis; vazio = não sei">
             <div></div><button class="btn" type="submit">Acrescentar paragem</button>
           </form>
         </div>
@@ -143,6 +152,7 @@ export async function renderRoteiro(el, ctx) {
       address: geo?.address ?? (addr || null),
       lat: geo?.lat ?? null, lng: geo?.lng ?? null,
       notes: el.querySelector("#stop-notes").value.trim() || null,
+      price_gbp: el.querySelector("#stop-price").value === "" ? null : Number(el.querySelector("#stop-price").value),
       position: stops.length ? Math.max(...stops.map((s) => s.position)) + 1 : 0,
     }));
     if (ok) ctx.refresh(); else { btn.disabled = false; btn.textContent = "Acrescentar paragem"; }
