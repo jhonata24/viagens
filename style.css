@@ -165,7 +165,10 @@ body.has-tabs .wrap{padding-bottom:calc(110px + env(safe-area-inset-bottom))}
 .price-line{display:flex;flex-wrap:wrap;gap:6px;align-items:baseline}
 .price{font-weight:700;font-size:13px;border-radius:99px;padding:1px 8px;background:var(--bg);border:1px solid var(--line)}
 .price.free{color:var(--good)}
-.day-total{margin:14px 0 0;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.day-total{margin:14px 0 0;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface);display:grid;gap:4px}
+.price.meal{color:var(--warn)}
+.stop-n.meal,.pin.meal span{background:var(--warn);font-size:14px}
+.check{display:flex;gap:8px;align-items:center;font-size:15px}
 .route-btns{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 6px}
 .map{height:420px;border-radius:14px;border:1px solid var(--line);background:var(--surface);position:sticky;top:16px;z-index:0}
 .pad{padding:16px}

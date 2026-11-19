@@ -48,9 +48,16 @@ export async function renderRoteiro(el, ctx) {
   const missing = stops.length - geoStops.length;
   // Preços (por adulto, em libras). 0 = grátis; sem valor = não indicado (ex.: refeições).
   const gbp = (n) => `£${Number(n).toLocaleString("pt-PT", { maximumFractionDigits: 2 })}`;
-  const priceTag = (s) => s.price_gbp == null ? "" : `<span class="price${Number(s.price_gbp) === 0 ? " free" : ""}">${Number(s.price_gbp) === 0 ? "Grátis" : `${gbp(s.price_gbp)} por pessoa`}</span>`;
-  const priced = stops.filter((s) => s.price_gbp != null);
-  const dayTotal = priced.reduce((t, s) => t + Number(s.price_gbp), 0);
+  // Nas refeições o preço é uma estimativa e soma à parte das entradas.
+  const isMeal = (s) => s.kind === "refeicao";
+  const priceTag = (s) => s.price_gbp == null ? "" : isMeal(s)
+    ? `<span class="price meal">~${gbp(s.price_gbp)} por pessoa</span>`
+    : `<span class="price${Number(s.price_gbp) === 0 ? " free" : ""}">${Number(s.price_gbp) === 0 ? "Grátis" : `${gbp(s.price_gbp)} por pessoa`}</span>`;
+  const sum = (list) => list.reduce((t, s) => t + Number(s.price_gbp), 0);
+  const priced = stops.filter((s) => s.price_gbp != null && !isMeal(s));
+  const meals = stops.filter((s) => s.price_gbp != null && isMeal(s));
+  const dayTotal = sum(priced), mealTotal = sum(meals);
+  const both = (n) => `${gbp(n)} por pessoa · ${gbp(n * trip.travelers)} para ${trip.travelers}`;
 
   el.innerHTML = `
     <section class="panel">
@@ -80,7 +87,7 @@ export async function renderRoteiro(el, ctx) {
           ${hotel ? "" : `<p class="hint">Escolham o hotel no separador Hotéis: as rotas passam a começar e acabar lá.</p>`}
           ${stops.length ? `<ol class="stops">${hotelRow1("Partida")}${stops.map((s, i) => `
             <li>
-              <span class="stop-n">${i + 1}</span>
+              <span class="stop-n${isMeal(s) ? " meal" : ""}" ${isMeal(s) ? 'title="Refeição"' : ""}>${isMeal(s) ? "🍴" : i + 1}</span>
               <div class="stop-body">
                 <b>${esc(s.name)}</b>
                 ${s.price_gbp != null || s.price_note ? `<span class="small price-line">${priceTag(s)}${s.price_note ? ` <span class="muted">${esc(s.price_note)}</span>` : ""}</span>` : ""}
@@ -92,7 +99,11 @@ export async function renderRoteiro(el, ctx) {
               </div>
             </li>`).join("")}${hotelRow1("Regresso")}</ol>` : `<p class="muted">Ainda não há paragens para este dia.${hotel ? "" : " A primeira paragem é o ponto de partida."}</p>`}
 
-          ${priced.length ? `<p class="day-total"><b>Entradas neste dia:</b> ${dayTotal ? `${gbp(dayTotal)} por pessoa · ${gbp(dayTotal * trip.travelers)} para ${trip.travelers}` : "tudo grátis"}<span class="muted small"> (sem refeições nem transportes)</span></p>` : ""}
+          ${priced.length || meals.length ? `<div class="day-total">
+            ${priced.length ? `<div><b>Entradas:</b> ${dayTotal ? both(dayTotal) : "tudo grátis"}</div>` : ""}
+            ${meals.length ? `<div><b>Refeições (estimativa):</b> ~${both(mealTotal)}</div>` : ""}
+            <div class="muted small">Preços por adulto, sem transportes${variant.summary ? ". As entradas estão ao preço de bilhete avulso (ver o pass acima)" : ""}.</div>
+          </div>` : ""}
           <div class="route-btns">
             ${gmaps ? `<a class="btn" href="${gmaps}" target="_blank" rel="noopener">Abrir rota no Google Maps</a>` : ""}
           </div>
@@ -107,6 +118,7 @@ export async function renderRoteiro(el, ctx) {
             <input id="stop-notes" maxlength="200" placeholder="Ex.: comprar bilhetes antes">
             <label for="stop-price">Preço (£)</label>
             <input id="stop-price" type="number" min="0" step="0.5" inputmode="decimal" placeholder="Por pessoa. 0 = grátis; vazio = não sei">
+            <div></div><label class="check"><input id="stop-meal" type="checkbox"> É uma refeição (o preço é uma estimativa)</label>
             <div></div><button class="btn" type="submit">Acrescentar paragem</button>
           </form>
         </div>
@@ -153,6 +165,7 @@ export async function renderRoteiro(el, ctx) {
       lat: geo?.lat ?? null, lng: geo?.lng ?? null,
       notes: el.querySelector("#stop-notes").value.trim() || null,
       price_gbp: el.querySelector("#stop-price").value === "" ? null : Number(el.querySelector("#stop-price").value),
+      kind: el.querySelector("#stop-meal").checked ? "refeicao" : "visita",
       position: stops.length ? Math.max(...stops.map((s) => s.position)) + 1 : 0,
     }));
     if (ok) ctx.refresh(); else { btn.disabled = false; btn.textContent = "Acrescentar paragem"; }
@@ -185,7 +198,7 @@ function drawMap(pts, hotel) {
   }).bindPopup(esc(hotel.name)).addTo(map);
   pts.forEach((p, i) =>
     L.marker([p.lat, p.lng], {
-      icon: L.divIcon({ className: "pin", html: `<span>${i + 1}</span>`, iconSize: [28, 28], iconAnchor: [14, 14] }),
+      icon: L.divIcon({ className: `pin${p.kind === "refeicao" ? " meal" : ""}`, html: `<span>${p.kind === "refeicao" ? "🍴" : i + 1}</span>`, iconSize: [28, 28], iconAnchor: [14, 14] }),
       title: p.name,
     }).bindPopup(esc(p.name)).addTo(map)
   );
