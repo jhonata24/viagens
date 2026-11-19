@@ -9,21 +9,32 @@ let map = null;
 export async function renderRoteiro(el, ctx) {
   const { trip } = ctx;
   const days = tripDays(trip);
-  const day = days.includes(ctx.sub) ? ctx.sub : days[0];
+  // URL: #slug/roteiro/<opção>/<dia> (os links antigos, só com o dia, abrem a opção 1)
+  const m = /^(\d+)\/(.*)$/.exec(ctx.sub || "");
+  const wantN = m ? Number(m[1]) : 1;
+  const daySub = m ? m[2] : ctx.sub;
+  const day = days.includes(daySub) ? daySub : days[0];
 
-  const [{ data: files, error: e1 }, { data: allStops, error: e2 }, { data: hotelRow }] = await Promise.all([
+  const [{ data: files, error: e1 }, { data: tripStops, error: e2 }, { data: hotelRow }, { data: variantRows }] = await Promise.all([
     db.from("trip_files").select("*").eq("trip_id", trip.id).eq("kind", "roteiro").order("created_at"),
     db.from("itinerary_stops").select("*").eq("trip_id", trip.id).order("day").order("position").order("created_at"),
     trip.hotel_id ? db.from("hotels").select("id, name, zone, lat, lng").eq("id", trip.hotel_id).maybeSingle() : Promise.resolve({ data: null }),
+    db.from("itinerary_variants").select("*").eq("trip_id", trip.id).order("n"),
   ]);
+  // Opções de roteiro. Sem nenhuma registada, há uma só (a 1), como antes.
+  const variants = variantRows?.length ? variantRows : [{ n: 1, name: "Roteiro", summary: null, auto_order: true }];
+  const variant = variants.find((v) => v.n === wantN) ?? variants[0];
+  const allStops = (tripStops ?? []).filter((s) => (s.variant ?? 1) === variant.n);
+  const dayHref = (d, n = variant.n) => `#${esc(trip.slug)}/roteiro/${n}/${d}`;
   const hotel = hotelRow && hotelRow.lat != null ? hotelRow : null;
   if (!el.isConnected) return;
   if (e1 || e2) { el.innerHTML = `<p class="error">Não foi possível carregar o roteiro.</p>`; return; }
 
-  // Ordem automática: sempre a que dá menos quilómetros (com o hotel no início e no fim, quando há).
+  // Ordem automática: a que dá menos quilómetros (com o hotel no início e no fim, quando há).
+  // Nas opções com horários marcados (auto_order = false), mantém-se a ordem por horário.
   const saved = allStops.filter((s) => s.day === day);
-  const stops = optimizeOrder(saved, hotel);
-  if (stops.some((s, i) => s.position !== i)) {
+  const stops = variant.auto_order ? optimizeOrder(saved, hotel) : saved;
+  if (variant.auto_order && stops.some((s, i) => s.position !== i)) {
     Promise.all(stops.map((s, i) => db.from("itinerary_stops").update({ position: i }).eq("id", s.id)))
       .then((res) => { if (res.some((r) => r.error)) console.error("Não foi possível guardar a ordem"); });
     stops.forEach((s, i) => { s.position = i; });
@@ -51,8 +62,11 @@ export async function renderRoteiro(el, ctx) {
 
     <section>
       <h2>Roteiro por dia</h2>
+      ${variants.length > 1 ? `<div class="variant-tabs" role="tablist" aria-label="Opções de roteiro">${variants.map((v) => `
+        <a role="tab" href="${dayHref(day, v.n)}" aria-selected="${v.n === variant.n}" class="variant-tab${v.n === variant.n ? " on" : ""}">${esc(v.name)}</a>`).join("")}</div>` : ""}
+      ${variant.summary ? `<details class="panel variant-summary"${variant.n !== 1 ? " open" : ""}><summary><b>Sobre esta opção: bilhetes e custos</b></summary><div class="pre">${esc(variant.summary)}</div></details>` : ""}
       <div class="day-tabs" role="tablist">${days.map((d) => `
-        <a role="tab" href="#${esc(trip.slug)}/roteiro/${d}" aria-selected="${d === day}" class="day-tab${d === day ? " on" : ""}">
+        <a role="tab" href="${dayHref(d)}" aria-selected="${d === day}" class="day-tab${d === day ? " on" : ""}">
           ${fmtDate(d, { weekday: "short", day: "numeric", month: "short" })}${countByDay(d) ? ` <span class="badge">${countByDay(d)}</span>` : ""}
         </a>`).join("")}</div>
 
@@ -75,7 +89,7 @@ export async function renderRoteiro(el, ctx) {
           <div class="route-btns">
             ${gmaps ? `<a class="btn" href="${gmaps}" target="_blank" rel="noopener">Abrir rota no Google Maps</a>` : ""}
           </div>
-          ${km ? `<p class="muted small">Ordem calculada automaticamente para andar o menos possível. Cerca de ${km.toFixed(1).replace(".", ",")} km a pé em linha reta${hotel ? ", a sair do hotel e a voltar" : " entre paragens"}.${route.length > 11 ? " O Google Maps só aceita 9 paragens intermédias: as restantes ficam de fora do link." : ""}${missing ? ` ${missing} paragem(ns) sem localização não entram na rota.` : ""}</p>` : ""}
+          ${km ? `<p class="muted small">${variant.auto_order ? "Ordem calculada automaticamente para andar o menos possível." : "Ordem pelos horários das visitas (bilhetes com hora marcada)."} Cerca de ${km.toFixed(1).replace(".", ",")} km a pé em linha reta${hotel ? ", a sair do hotel e a voltar" : " entre paragens"}.${route.length > 11 ? " O Google Maps só aceita 9 paragens intermédias: as restantes ficam de fora do link." : ""}${missing ? ` ${missing} paragem(ns) sem localização não entram na rota.` : ""}</p>` : ""}
 
           <form id="add-stop" class="form-grid">
             <label for="stop-name">Sítio</label>
@@ -125,7 +139,7 @@ export async function renderRoteiro(el, ctx) {
     const geo = await geocode(addr || name, trip.destination);
     if (!geo) toast("Não encontrei este sítio no mapa. Fica na lista; acrescente a morada para entrar na rota.", "info");
     const ok = await run(db.from("itinerary_stops").insert({
-      trip_id: trip.id, day, name,
+      trip_id: trip.id, variant: variant.n, day, name,
       address: geo?.address ?? (addr || null),
       lat: geo?.lat ?? null, lng: geo?.lng ?? null,
       notes: el.querySelector("#stop-notes").value.trim() || null,

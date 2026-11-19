@@ -111,10 +111,11 @@ async function renderTrip(slug, tabId, sub) {
   await tab.render(body, ctx);
 }
 
-/* ---------- Navegação: #slug/separador/extra ---------- */
+/* ---------- Navegação: #slug/separador/extra (o extra pode ter "/", ex.: 2/2026-12-24) ---------- */
 let lastKey = "";
 function route() {
-  const [slug, tab, sub] = decodeURIComponent(location.hash.slice(1)).split("/");
+  const [slug, tab, ...rest] = decodeURIComponent(location.hash.slice(1)).split("/");
+  const sub = rest.join("/");
   const key = `${slug}/${tab}`;
   if (key !== lastKey) window.scrollTo(0, 0);
   lastKey = key;

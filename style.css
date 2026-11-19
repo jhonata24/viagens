@@ -145,6 +145,12 @@ body.has-tabs .wrap{padding-bottom:calc(110px + env(safe-area-inset-bottom))}
 .files li{display:flex;gap:10px;align-items:center}
 .file{font-weight:700;text-decoration:none}
 .upload{justify-self:start;cursor:pointer}
+.variant-tabs{display:inline-flex;gap:2px;flex-wrap:wrap;margin:6px 0 10px;padding:4px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.variant-tab{padding:7px 14px;border-radius:9px;text-decoration:none;color:var(--ink);font-weight:700;font-size:15px}
+.variant-tab.on{background:var(--accent);color:#fff}
+.variant-summary{margin:0 0 12px}
+.variant-summary summary{cursor:pointer}
+.pre{white-space:pre-line;margin-top:8px;line-height:1.5}
 .day-tabs{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 16px}
 .day-tab{padding:6px 12px;border:1px solid var(--line);border-radius:99px;text-decoration:none;color:var(--ink);font-weight:600;font-size:15px;background:var(--surface)}
 .day-tab.on{background:var(--ink);color:var(--surface);border-color:var(--ink)}

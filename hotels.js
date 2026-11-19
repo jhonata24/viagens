@@ -9,7 +9,7 @@ export async function renderHotels(el, ctx) {
   const [{ data: hotels, error: e1 }, { data: votes, error: e2 }, { data: stops }] = await Promise.all([
     db.from("hotels").select("*").eq("trip_id", trip.id).order("rank"),
     db.from("votes").select("hotel_id, voter_name, member_id").eq("trip_id", trip.id),
-    db.from("itinerary_stops").select("day, lat, lng").eq("trip_id", trip.id),
+    db.from("itinerary_stops").select("day, lat, lng").eq("trip_id", trip.id).eq("variant", 1),
   ]);
   if (!el.isConnected) return;
   if (e1 || e2) { el.innerHTML = `<p class="error">Não foi possível carregar os hotéis.</p>`; return; }
