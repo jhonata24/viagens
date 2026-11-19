@@ -2,8 +2,8 @@ import { db, esc, fmtDate, tripDays } from "./util.js";
 import { haversine } from "./rota-logic.js";
 
 // Distância máxima (km) para um restaurante contar como "adequado" a um momento do roteiro.
-const NEAR_MEAL = 1.2;   // perto de uma refeição planeada no roteiro
-const NEAR_STOP = 0.8;   // perto de uma visita marcada à hora de almoço ou jantar
+const NEAR_MEAL = 0.7;   // perto de uma refeição planeada no roteiro (≈ 9 min a pé)
+const NEAR_STOP = 0.5;   // perto de uma visita marcada à hora de almoço ou jantar
 
 const BOOKING = {
   thefork: { label: "Reservar pelo TheFork", cls: "tf" },
@@ -35,13 +35,20 @@ function matchesFor(r, stops, variants) {
     const meal = mealOf(s);
     if (!meal) continue;
     if ((r.closed_days || []).includes(s.day)) continue;
+    if (!(r.meals || ["almoço", "jantar"]).includes(meal)) continue;
     const km = haversine(r, s);
     if (km > (s.kind === "refeicao" ? NEAR_MEAL : NEAR_STOP)) continue;
     const key = `${s.day}|${meal}`;
     const cur = best.get(key) ?? { day: s.day, meal, km: Infinity, near: null, variants: new Set(), planned: false };
     cur.variants.add(s.variant ?? 1);
-    if (km < cur.km) { cur.km = km; cur.near = s.kind === "refeicao" ? "a refeição planeada" : s.name; }
-    if (s.kind === "refeicao" && km < 0.1) cur.planned = true;
+    const planned = s.kind === "refeicao" && km < 0.15 && s.name.toLowerCase().includes(r.name.split(/[ &(]/)[0].toLowerCase());
+    if (planned) cur.planned = true;
+    if (km < cur.km) {
+      cur.km = km;
+      // "Almoço: Flat Iron Covent Garden · ..." → "o almoço planeado (Flat Iron Covent Garden)"
+      const what = s.name.replace(/^(almoço( de natal)?|jantar)\s*:?\s*/i, "").replace(/\s*·.*$/, "");
+      cur.near = s.kind === "refeicao" ? `${meal === "almoço" ? "o almoço" : "o jantar"} planeado (${what})` : s.name;
+    }
     best.set(key, cur);
   }
   const names = new Map(variants.map((v) => [v.n, v.name.replace(/^Roteiro\s*/i, "")]));
@@ -77,7 +84,7 @@ export async function renderRestaurantes(el, ctx) {
   const chip = (m) => `
     <li class="fit${m.offer ? " has-offer" : ""}${filter && m.day !== filter ? " dim" : ""}">
       <b>${esc(shortDay(m.day))} · ${m.meal === "almoço" ? "Almoço" : "Jantar"}</b>
-      <span class="muted small">${esc(m.opts.join(" e "))} · ${m.planned ? "já está no roteiro" : `a ${fmtKm(m.km)} de ${esc(m.near)}`}</span>
+      <span class="muted small">${esc(m.opts.join(" e "))} · ${m.planned ? "é o que está no roteiro" : `a ${fmtKm(m.km)} d${/^o /.test(m.near) ? "" : "e "}${esc(m.near)}`}</span>
       ${m.offer ? `<span class="offer">TheFork ${esc(m.offer)}</span>` : ""}
     </li>`;
 
@@ -104,7 +111,7 @@ export async function renderRestaurantes(el, ctx) {
         <h4 class="fit-title">Adequado para</h4>
         ${r.matches.length ? `<ul class="fits">${r.matches.map(chip).join("")}</ul>` : `<p class="muted small" style="margin:0">Não fica perto de nenhuma refeição do roteiro.</p>`}
       </div>
-      ${closed.length ? `<p class="warn-text small" style="margin:0">Fechado ou sem mesas a ${closed.map((d) => fmtDate(d, { day: "numeric", month: "short" })).join(", ")}.</p>` : ""}
+      ${closed.length ? `<p class="warn-text small" style="margin:0">Não contar com ele a ${closed.map((d) => fmtDate(d, { day: "numeric", month: "short" })).join(", ")}.</p>` : ""}
       ${r.notes ? `<p class="small" style="margin:0">${esc(r.notes)}</p>` : ""}
       <a class="small" href="${maps}" target="_blank" rel="noopener">Ver no Google Maps ↗</a>
     </article>`;
@@ -120,5 +127,5 @@ export async function renderRestaurantes(el, ctx) {
       }).join("")}
     </div>
     <div class="rest-grid">${shown.map(card).join("") || `<p class="muted">Nenhum restaurante sugerido para este dia.</p>`}</div>
-    <p class="muted small">Descontos e disponibilidade verificados no TheFork${checked ? ` a ${fmtDate(checked)}` : ""}: o desconto depende da hora e do número de pessoas, e pode mudar. Em geral o desconto aplica-se à comida, não às bebidas. Preços por adulto.</p>`;
+    <p class="muted small">No dia de Natal só se conta com os restaurantes confirmados abertos. Descontos e disponibilidade verificados no TheFork${checked ? ` a ${fmtDate(checked)}` : ""}: o desconto depende da hora e do número de pessoas, e pode mudar. Em geral o desconto aplica-se à comida, não às bebidas. Preços por adulto.</p>`;
 }
